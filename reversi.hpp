@@ -22,10 +22,14 @@ namespace cpp_morijobi{
       typedef std::array<std::array<string_type, board_length> ,board_length> show_buffer_type;
       typedef std::shared_ptr<stone_type> pointer_stone_type;
 
+    public:
+    	typedef std::list<pointer_stone_type> stones_type;
+    protected:
+
       bool is_running;
       std::vector<string_type> command_and_parameters;
 
-      std::list<pointer_stone_type> stones;
+      stones_type stones;
 
       void command_exit(){
         is_running = false;
