@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 
 namespace cpp_morijobi{
