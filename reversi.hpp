@@ -86,7 +86,7 @@ namespace cpp_morijobi{
     	  // create stone
     	  auto next_stone = stone_type(is_white, next_position);
     	  // check next_stone
-    	  auto reversi_stones = check_set_stone(next_stone);
+    	  //auto reversi_stones = check_set_stone(next_stone);
     	  // set stone use next_stone
 		    stones_.push_back(pointer_stone_type(new stone_type(next_stone)));
     	  // ++turn

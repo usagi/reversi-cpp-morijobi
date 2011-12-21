@@ -15,8 +15,8 @@ namespace cpp_morijobi{
 		typedef typename stones_type::value_type::element_type::position_type position_type;
 
 		player(const reversi_type& reversi)
-			: reversi(reversi)
-			, stones(reversi.stones())
+			: reversi(&reversi)
+			, stones(&reversi.stones())
 		{}
 		virtual ~player(){}
 		virtual void update(){}
@@ -24,12 +24,12 @@ namespace cpp_morijobi{
 		virtual const position_type& next_position() const
 		{ return next_position_; }
 
-		virtual const void next_position(const position_type& p)
+		virtual void next_position(const position_type& p)
 		{ next_position_ = p; }
 
 	protected:
-		reversi_type& reversi;
-		stones_type& stones;
+	  const reversi_type* reversi;
+		const stones_type* stones;
 		position_type next_position_;
 	};
 
@@ -41,18 +41,24 @@ namespace cpp_morijobi{
 	public:
     typedef reversi_type_ reversi_type;
     typedef player<reversi_type> player_type;
-    typedef random<> random_type;
+		typedef typename reversi_type::stones_type stones_type;
+		typedef typename stones_type::value_type::element_type::position_type position_type;
 		computer_player(const reversi_type& reversi)
       : player_type(reversi) 
 		{}
 
-		void update(){
+		virtual void update(){
+      typedef random<> random_type;
       typedef std::uniform_int_distribution<> distribution_type;
-			auto rne = random_type::instance();
+			auto rne = random_type::engine();
 			auto rnd = distribution_type(0, reversi_type::board_length);
-			auto r = [&](){ return rnd(rne); };
-			next_position(position_type(r(), r()));
+      auto r = [&](){ return rnd(rne); };
+      //player_type::next_position_ = position_type(r(), r());
+      //auto z = next_position();
+      next_position(position_type(r(), r()));
 		}
+    //virtual void next_position(const position_type& p)
+    //{ player_type::next_position(p); }
 	};
 
 	// delivered
@@ -66,7 +72,7 @@ namespace cpp_morijobi{
       : player_type(reversi)
 		{ }
 
-		void update(){
+		virtual void update(){
 
 		}
 	};
