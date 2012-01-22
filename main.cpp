@@ -1,6 +1,10 @@
+#include <iostream>
+#include <exception>
 #include "reversi.hpp"
 
-main(){
+int main() try {
   cpp_morijobi::reversi::reversi<>().run();
+}catch(const std::exception& e){
+  std::cerr << e.what();
 }
 
