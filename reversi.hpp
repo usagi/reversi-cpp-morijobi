@@ -117,15 +117,29 @@ namespace cpp_morijobi{
         
         auto next_position = active_player->next_position();
         auto next_stone = stone_type(is_white, next_position);
-        auto reversi_stones = check_set_stone(next_stone);
+        auto reversible_stones = check_set_stone(next_stone);
         
-        stones_.push_back(pointer_stone_type(new stone_type(std::move(next_stone))));
+        if(reversible_stones.empty()){
+          std::cout << "fail, it's not placeable." << std::endl;
+        }else{
+          std::cout << "succeed, it's placeable." << std::endl;
+          stones_.push_back(pointer_stone_type(new stone_type(std::move(next_stone))));
+        }
+        
+        // auto show
+        command_show();
+        
         ++turn_;
       }
       
       const std::list<pointer_stone_type>
       check_set_stone(const stone_type& next_stone){
-        auto result = std::list<pointer_stone_type>();
+        std::cout
+          << "check_set_stone begin\n"
+          << "next_stone is " << next_stone << std::endl;
+        
+        typedef std::list<pointer_stone_type> result_type;
+        auto result = result_type();
         // check 8 direction
         for(auto direction: {
           position_type( 0,-1),
@@ -144,6 +158,7 @@ namespace cpp_morijobi{
               <= std::max(p.x(), p.y());
             p += direction
           ){
+            auto result_buffer = result_type();
             auto find_result = std::find_if(
               stones_.begin(), stones_.end(),
               [&](const pointer_stone_type& pstone){
@@ -151,16 +166,34 @@ namespace cpp_morijobi{
               }
             );
             
-            if(
-              find_result == stones_.end() ||
-              (*find_result)->is_white() == next_stone.is_white()
-            )
+            if( find_result == stones_.end() )
               break;
             
-            result.push_back(*find_result);
-            std::cout << "push " << (*find_result)->position() << std::endl;
+            if( (*find_result)->is_white() == next_stone.is_white() ){
+              std::move(
+                result_buffer.begin(), result_buffer.end(),
+                std::back_inserter(result)
+              );
+              break;
+            }
+            
+            result_buffer.push_back(*find_result);
           }
         }
+        
+        if(result.empty())
+          std::cout << "reversible stone is not found" << std::endl;
+        else if(result.size() == 1)
+          std::cout << "reversible stone is " << *result.begin() << std::endl;
+        else{
+          std::cout << "reversible stones are\n";
+          for(const auto& v: result)
+            std::cout << " " << v << std::endl;
+        }
+        
+        std::cout
+          << "check_set_stone end"
+          << std::endl;
         
         return result;
       }
@@ -192,15 +225,11 @@ namespace cpp_morijobi{
       }
       
       void command_not_found() const{
-        std::cout << "##ERROR##: command \"" << get_command() << "\" is not found" << std::endl;
-      }
-      
-      void command_echo() const{
-        if(is_not_exist_command_parameter(1)){
-          std::cerr << "##ERROR##: echo command required one parameter." << std::endl;
-          return;
-        }
-        std::cout << get_command_parameter(0) << std::endl;
+        std::cout
+          << "##ERROR##: command \""
+          << get_command()
+          << "\" is not found"
+          << std::endl;
       }
       
       inline const string_type& get_command() const{
@@ -230,13 +259,13 @@ namespace cpp_morijobi{
       void invoke_command(){
         if(is_command_empty())
           return;
-        else if(check_command("exit"))
+        else if(check_command("exit") || check_command("e"))
           command_exit();
-        else if(check_command("reset"))
+        else if(check_command("reset") || check_command("r"))
           command_reset();
-        else if(check_command("next"))
+        else if(check_command("next") || check_command("n"))
           command_next();
-        else if(check_command("show"))
+        else if(check_command("show") || check_command("s"))
           command_show();
         else
           command_not_found();
@@ -255,15 +284,21 @@ namespace cpp_morijobi{
       {}
       
       void run(){
+        
         if(is_running){
           std::cerr << "##ERROR##: reversi is running." << std::endl;
           return;
         }
         is_running = true;
+        
+        // auto reset at the first time
+        command_reset();
+        
         do{
           get_command_line();
           invoke_command();
         }while(is_running);
+        
       }
       
     };
