@@ -9,14 +9,18 @@
 #include <utility>
 
 #include "utility.hpp"
-#include "misc.hpp"
+#include "position.hpp"
 #include "stone.hpp"
 #include "player.hpp"
 
 namespace cpp_morijobi{
   namespace reversi{
     
-    template<size_t L = 6, class P = position<uint_fast8_t>, class S = std::string>
+    template<
+      size_t L = 6,
+      class P = position<int_fast64_t>,
+      class S = std::string
+    >
     class reversi{
     public:
       typedef reversi<L, P, S> this_type;
@@ -25,13 +29,16 @@ namespace cpp_morijobi{
       typedef stone<position_type> stone_type;
       typedef S string_type;
       typedef typename string_type::value_type charactor_type;
-      typedef std::array<std::array<string_type, board_length> ,board_length> show_buffer_type;
+      typedef
+        std::array<std::array<string_type, board_length> ,board_length>
+        show_buffer_type;
       typedef std::shared_ptr<stone_type> pointer_stone_type;
       typedef player<this_type> player_type;
-      typedef std::vector<player_type> players_type;
-      typedef std::list<pointer_stone_type> stones_type;
       typedef computer_player<this_type> computer_player_type;
       typedef user_player<this_type> user_player_type;
+      typedef std::unique_ptr<player_type> player_ptr_type;
+      typedef std::vector<player_ptr_type> player_ptrs_type;
+      typedef std::list<pointer_stone_type> stones_type;
       
       const stones_type& stones() const
       { return stones_; }
@@ -43,7 +50,7 @@ namespace cpp_morijobi{
       bool is_running;
       std::vector<string_type> command_and_parameters;
       stones_type stones_;
-      players_type players_;
+      player_ptrs_type player_ptrs_;
       size_t turn_;
       
       void command_exit(){
@@ -65,67 +72,103 @@ namespace cpp_morijobi{
       void reset_board(){
         stones_.clear();
         std::cout << "clear stones" << std::endl;
-        stones_.push_back(pointer_stone_type(new stone_type(true, position_type(board_length >> 1,  board_length >> 1))));
-        stones_.push_back(pointer_stone_type(new stone_type(true, position_type((board_length >> 1) - 1,  (board_length >> 1) - 1))));
-        stones_.push_back(pointer_stone_type(new stone_type(false, position_type(board_length >> 1,  (board_length >> 1) - 1))));
-        stones_.push_back(pointer_stone_type(new stone_type(false, position_type((board_length >> 1) - 1,  board_length >> 1) )));
+        // center right bottom
+        stones_.push_back(pointer_stone_type(new stone_type(
+          true,
+          position_type(board_length >> 1,  board_length >> 1
+        ))));
+        // center left top
+        stones_.push_back(pointer_stone_type(new stone_type(
+          true,
+          position_type((board_length >> 1) - 1,  (board_length >> 1) - 1
+        ))));
+        // center right top
+        stones_.push_back(pointer_stone_type(new stone_type(
+          false,
+          position_type(board_length >> 1,  (board_length >> 1) - 1
+        ))));
+        // center left bottom
+        stones_.push_back(pointer_stone_type(new stone_type(
+          false, position_type((board_length >> 1) - 1,  board_length >> 1
+        ))));
         std::cout << "reset stones" << std::endl;
       }
       
       void reset_players(){
-        players_.clear();
+        player_ptrs_.clear();
           std::cout << "clear players" << std::endl;
           for(auto n = 2; n; --n){
-            players_.push_back(computer_player_type(*this));
-        std::cout << "add computer_player[" << players_.size() - 1 << "]" << std::endl;
+            player_ptrs_.push_back(player_ptr_type(
+              new computer_player_type(*this)
+            ));
+            std::cout
+              << "add computer_player["
+              << player_ptrs_.size() - 1
+              << "]"
+              << std::endl;
           }
       }
       
       void command_next(){
-        auto& active_player = players_[turn_ % players_.size()];
+        const auto& active_player = player_ptrs_[turn_ % player_ptrs_.size()];
         bool is_white = bool(turn_ % 2);
-        // player update
-        active_player.update();
-        // get player next_position
-        auto next_position = active_player.next_position();
-        // create stone
+        
+        active_player->update();
+        
+        auto next_position = active_player->next_position();
         auto next_stone = stone_type(is_white, next_position);
-        // check next_stone
-        //auto reversi_stones = check_set_stone(next_stone);
-        // set stone use next_stone
-        stones_.push_back(pointer_stone_type(new stone_type(next_stone)));
-        // ++turn
+        auto reversi_stones = check_set_stone(next_stone);
+        
+        stones_.push_back(pointer_stone_type(new stone_type(std::move(next_stone))));
         ++turn_;
       }
       
-      const std::list<stone_type> check_set_stone(stone_type next_stone){
-        auto result = std::list<stone_type>();
+      const std::list<pointer_stone_type>
+      check_set_stone(const stone_type& next_stone){
+        auto result = std::list<pointer_stone_type>();
         // check 8 direction
         for(auto direction: {
-          position_type(0,-1),
-          position_type(1,-1),
-          position_type(1,0),
-          position_type(1,1),
-          position_type(0,1),
-          position_type(-1,1),
+          position_type( 0,-1),
+          position_type( 1,-1),
+          position_type( 1, 0),
+          position_type( 1, 1),
+          position_type( 0, 1),
+          position_type(-1, 1),
           position_type(-1,-1),
-          position_type(-1,1)
+          position_type(-1, 1)
         }){
           for(
-            auto check_position = next_stone.position() + direction;
-            ;
-            check_position += direction
+            auto p = next_stone.position();
+            std::min(p.x(), p.y()) < 0 ||
+            typename position_type::value_type(board_length)
+              <= std::max(p.x(), p.y());
+            p += direction
           ){
+            auto find_result = std::find_if(
+              stones_.begin(), stones_.end(),
+              [&](const pointer_stone_type& pstone){
+                return pstone->position() == p;
+              }
+            );
             
+            if(
+              find_result == stones_.end() ||
+              (*find_result)->is_white() == next_stone.is_white()
+            )
+              break;
+            
+            result.push_back(*find_result);
+            std::cout << "push " << (*find_result)->position() << std::endl;
           }
         }
+        
         return result;
       }
       
       void command_show() const{
-        const string_type show_buffer_charactor_space = "・";
-        const string_type show_buffer_charactor_stone_black = "○";
-        const string_type show_buffer_charactor_stone_white = "●";
+        const string_type show_buffer_charactor_space = "* ";
+        const string_type show_buffer_charactor_stone_black = "B ";
+        const string_type show_buffer_charactor_stone_white = "W ";
         
         auto show_buffer = [&](){
           show_buffer_type r;
@@ -146,28 +189,6 @@ namespace cpp_morijobi{
             std::cout << element;
           std::cout << std::endl;
         }
-      }
-      
-      void command_set(){
-        // center right bottom
-        stones_.push_back(pointer_stone_type(new stone_type(
-          true,
-          position_type(board_length >> 1,  board_length >> 1
-        ))));
-        // center left top
-        stones_.push_back(pointer_stone_type(new stone_type(
-          true,
-          position_type((board_length >> 1) - 1,  (board_length >> 1) - 1
-        ))));
-        // center right top
-        stones_.push_back(pointer_stone_type(new stone_type(
-          false,
-          position_type(board_length >> 1,  (board_length >> 1) - 1
-        ))));
-        // center left bottom
-        stones_.push_back(pointer_stone_type(new stone_type(
-          false, position_type((board_length >> 1) - 1,  board_length >> 1
-        ))));
       }
       
       void command_not_found() const{
@@ -211,16 +232,12 @@ namespace cpp_morijobi{
           return;
         else if(check_command("exit"))
           command_exit();
-        else if(check_command("echo"))
-          command_echo();
         else if(check_command("reset"))
           command_reset();
         else if(check_command("next"))
           command_next();
         else if(check_command("show"))
           command_show();
-        else if(check_command("set"))
-          command_set();
         else
           command_not_found();
       }

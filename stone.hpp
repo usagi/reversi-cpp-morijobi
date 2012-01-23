@@ -9,6 +9,7 @@ namespace cpp_morijobi{
     class stone{
     public:
       typedef P position_type;
+      typedef stone<position_type> this_type;
       
       inline const position_type& position() const
       { return position_; }
@@ -26,6 +27,11 @@ namespace cpp_morijobi{
         :is_white_(white)
         ,position_(p)
       {}
+      
+      friend std::ostream& operator<<(std::ostream& o, const this_type& t){
+        o << "[ " << t.is_white_ << " , " << t.position_ << " ]";
+        return o;
+      }
       
     protected:
       bool is_white_;
