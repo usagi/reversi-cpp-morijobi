@@ -62,10 +62,7 @@ namespace cpp_morijobi{
         std::cout << "computer_player update begin" << std::endl;
         typedef random<> random_type;
         typedef std::uniform_int_distribution<> distribution_type;
-        //auto rne = random_type::engine();
-        auto rnd = distribution_type(0, reversi_type::board_length);
-        //auto r = [&](){ return rnd(rne); };
-        //auto p = position_type( r(), r() );
+        auto rnd = distribution_type(0, reversi_type::board_length - 1);
         auto p = position_type( 
           random_type::generate(rnd),
           random_type::generate(rnd)

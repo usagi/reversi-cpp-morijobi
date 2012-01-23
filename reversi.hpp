@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <iomanip>
 #include <string>
 
 #include <list>
@@ -110,6 +111,8 @@ namespace cpp_morijobi{
       }
       
       void command_next(){
+        std::cout << "next begin" << std::endl;
+        
         const auto& active_player = player_ptrs_[turn_ % player_ptrs_.size()];
         bool is_white = bool(turn_ % 2);
         
@@ -130,6 +133,8 @@ namespace cpp_morijobi{
         command_show();
         
         ++turn_;
+        
+        std::cout << "next end" << std::endl;
       }
       
       const std::list<pointer_stone_type>
@@ -199,6 +204,10 @@ namespace cpp_morijobi{
       }
       
       void command_show() const{
+        std::cout
+          << "show begin ( turn is " << turn_  << " )\n"
+          << std::endl;
+        
         const string_type show_buffer_charactor_space = "* ";
         const string_type show_buffer_charactor_stone_black = "B ";
         const string_type show_buffer_charactor_stone_white = "W ";
@@ -217,11 +226,26 @@ namespace cpp_morijobi{
             : show_buffer_charactor_stone_black;
         }
         
-        for(auto line: show_buffer){
-          for(auto element: line)
-            std::cout << element;
+        {
+          size_t n = 0;
+          auto left_area = std::string("     ");
+          std::cout << left_area;
+          while(n < board_length)
+            std::cout << n++ << " ";
           std::cout << std::endl;
+          n = 0;
+          for(auto line: show_buffer){
+            std::cout
+              << std::setw(left_area.size() - 1)
+              << std::right
+              << n++ << " ";
+            for(auto element: line)
+              std::cout << element;
+            std::cout << std::endl;
+          }
         }
+        
+        std::cout << "\nshow end" << std::endl;
       }
       
       void command_not_found() const{
