@@ -20,8 +20,8 @@ namespace cpp_morijobi{
         position_type;
       
       player(const reversi_type& reversi)
-        : reversi(&reversi)
-        , stones(&reversi.stones())
+        : reversi_(&reversi)
+        , stones_(&reversi.stones())
       {}
       
       virtual ~player(){}
@@ -35,9 +35,12 @@ namespace cpp_morijobi{
       { next_position_ = p; }
       
     protected:
-      const reversi_type* reversi;
-      const stones_type* stones;
+      const reversi_type* reversi_;
+      const stones_type* stones_;
       position_type next_position_;
+      
+      const reversi_type& reversi() const { return *reversi_; }
+      const stones_type& stones() const { return *stones_; }
     };
     
     template<class reversi_type_>
@@ -60,17 +63,42 @@ namespace cpp_morijobi{
       
       virtual void update(){
         std::cout << "computer_player update begin" << std::endl;
+        
+        auto is_white = this->reversi().player_is_white(this);
+        std::cout << "my stone is " << (is_white ? "white":"black") << std::endl;
+        
+        // lookup around of a stone positions of another player
+        auto ps = [&](){
+          std::vector<position_type> r;
+          for(const auto& s: this->stones())
+            if(s->is_white() != is_white){
+              const auto& base_position = s->position();
+              for(auto direction: {
+                position_type( 0,-1),
+                position_type( 1,-1),
+                position_type( 1, 0),
+                position_type( 1, 1),
+                position_type( 0, 1),
+                position_type(-1, 1),
+                position_type(-1,-1),
+                position_type(-1, 1)
+              }){
+                r.push_back(base_position + direction);
+              }
+            }
+          return r;
+        }();
+        
         typedef random<> random_type;
         typedef std::uniform_int_distribution<> distribution_type;
-        auto rnd = distribution_type(0, reversi_type::board_length - 1);
-        auto p = position_type( 
-          random_type::generate(rnd),
-          random_type::generate(rnd)
-        );
-        std::cout << "generate random position: " << p << std::endl;
+        auto rnd = distribution_type(0, ps.size() - 1);
+        auto p = ps[random_type::generate(rnd)];
+        
+        std::cout << "generate position: " << p << std::endl;
         next_position( p );
         std::cout << "computer_player update end" << std::endl;
       }
+      
     };
     
     template<class reversi_type>

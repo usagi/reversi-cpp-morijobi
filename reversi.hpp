@@ -3,11 +3,11 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
-
 #include <list>
 #include <array>
 #include <memory>
 #include <utility>
+#include <stdexcept>
 
 #include "utility.hpp"
 #include "position.hpp"
@@ -46,6 +46,13 @@ namespace cpp_morijobi{
       
       const size_t turn() const
       { return turn_; }
+      
+      const bool player_is_white(const player_type* p) const {
+        for(size_t n = 0; n < player_ptrs_.size(); ++n)
+          if(player_ptrs_[n].get() == p)
+            return bool(n % 2);
+        throw std::logic_error("player_is_white; unknown player");
+      }
       
     protected:
       bool is_running;
@@ -114,7 +121,7 @@ namespace cpp_morijobi{
         std::cout << "next begin" << std::endl;
         
         const auto& active_player = player_ptrs_[turn_ % player_ptrs_.size()];
-        bool is_white = bool(turn_ % 2);
+        bool is_white = player_is_white(active_player.get());
         
         active_player->update();
         
@@ -127,14 +134,45 @@ namespace cpp_morijobi{
         }else{
           std::cout << "succeed, it's placeable." << std::endl;
           stones_.push_back(pointer_stone_type(new stone_type(std::move(next_stone))));
+          for(auto s: reversible_stones)
+            s->reverse();
         }
         
         // auto show
         command_show();
         
+        check_game_end();
+        
         ++turn_;
         
         std::cout << "next end" << std::endl;
+      }
+      
+      void check_game_end(){
+        size_t count_of_white = 0, count_of_black = 0;
+        for(const auto& s: stones_)
+          ++(s->is_white() ? count_of_white : count_of_black);
+        if(
+          count_of_white == 0 ||
+          count_of_black == 0 ||
+          stones_.size() == board_length * board_length
+        ){
+          std::cout
+            << "GAME END\n"
+            << "black: " << count_of_black << "\n"
+            << "white: " << count_of_white << "\n";
+          if(count_of_black == count_of_white)
+            std::cout << "draw" << std::endl;
+          else
+            std::cout
+              << "the winner is "
+              << ((count_of_black > count_of_white)? "black": "white")
+              << "\n\n" << std::endl;
+          
+          // auto reset
+          command_reset();
+        }
+          
       }
       
       const std::list<pointer_stone_type>
@@ -153,17 +191,18 @@ namespace cpp_morijobi{
           position_type( 1, 1),
           position_type( 0, 1),
           position_type(-1, 1),
-          position_type(-1,-1),
-          position_type(-1, 1)
+          position_type(-1, 0),
+          position_type(-1,-1)
         }){
+          auto result_buffer = result_type();
           for(
-            auto p = next_stone.position();
-            std::min(p.x(), p.y()) < 0 ||
-            typename position_type::value_type(board_length)
-              <= std::max(p.x(), p.y());
+            auto p = next_stone.position() + direction;
+            0 <= std::min(p.x(), p.y()) &&
+            std::max(p.x(), p.y())
+              < typename position_type::value_type(board_length);
             p += direction
           ){
-            auto result_buffer = result_type();
+            std::cout << "check of " << p << " ... ";
             auto find_result = std::find_if(
               stones_.begin(), stones_.end(),
               [&](const pointer_stone_type& pstone){
@@ -171,10 +210,13 @@ namespace cpp_morijobi{
               }
             );
             
-            if( find_result == stones_.end() )
+            if( find_result == stones_.end() ){
+              std::cout << "empty" << std::endl;
               break;
+            }
             
             if( (*find_result)->is_white() == next_stone.is_white() ){
+              std::cout << "my stone" << std::endl;
               std::move(
                 result_buffer.begin(), result_buffer.end(),
                 std::back_inserter(result)
@@ -182,6 +224,7 @@ namespace cpp_morijobi{
               break;
             }
             
+            std::cout << "another player stone" << std::endl;
             result_buffer.push_back(*find_result);
           }
         }
@@ -189,7 +232,7 @@ namespace cpp_morijobi{
         if(result.empty())
           std::cout << "reversible stone is not found" << std::endl;
         else if(result.size() == 1)
-          std::cout << "reversible stone is " << *result.begin() << std::endl;
+          std::cout << "reversible stone is " << **(result.begin()) << std::endl;
         else{
           std::cout << "reversible stones are\n";
           for(const auto& v: result)

@@ -4,7 +4,7 @@
 
 namespace cpp_morijobi{
   namespace reversi{
-  
+    
     template<class P>
     class stone{
     public:
@@ -18,6 +18,8 @@ namespace cpp_morijobi{
       stone()
         :is_white_(false)
       {}
+      
+      inline void reverse() { is_white_ = !is_white_; }
       
       stone(const bool white)
         :is_white_(white)
